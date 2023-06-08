@@ -1,73 +1,77 @@
-.section .data
-
-usage_message:
-    .string "Expected only 1 argument.\n"
-
-
-newline:
-    .string "\n"
-
 .section .text
 .global _start
+.align 4
 
 
-// int _start(void **__args)
 _start:
-    ldr r0, [sp]
+    ldr r0, [r1]
     cmp r0, #2
-    bne usage
+    blne not_enough_arguments
     ldr r0, [r1, #8]
-    bl print
-    ldr r0, =newline
-    bl print
-    mov r0, #0 // exit code (0)
+    bl puts
     bl exit
 
 
-// void usage(void)
-usage:
-    ldr r0, =usage_message
-    bl print
+/* void not_enough_arguments(void) */
+not_enough_arguments:
+    ldr r0, =error_message
+    bl puts
+    mov r7, #1
     mov r0, #1
-    bl exit
+    swi #0
 
 
-// unsigned int print(char *string)
-print:
+/* int puts(char* restrict string) */
+puts:
     push { lr }
-    push { r1 - r3 }
+    push { r1 - r2 }
     mov r7, #4
     mov r1, r0
-    bl length
+    bl strlen
     mov r2, r0
     mov r0, #1
     swi #0
-    mov r0, #0
-    pop { r1 - r3 }
+    push { r2 }
+    ldr r1, =newline
+    mov r2, #1
+    mov r0, #1
+    swi #0
+    pop { r0 }
+    pop { r1 - r2 }
     pop { pc }
 
 
-// unsigned int length(char *string)
-length:
+/* int strlen(char* restrict string) */
+strlen:
     push { lr }
     push { r1 - r3 }
-    mov r2, #0
-    bl length_loop
-    mov r0, r2
+    mov r1, #0
+    bl strlen_loop
+    mov r0, r1
     pop { r1 - r3 }
     pop { pc }
 
 
-length_loop:
-    add r1, r2, r0
-    ldrb r3, [r1]
+strlen_loop:
+    add r2, r0, r1
+    ldrb r3, [r2]
     cmp r3, #0
     moveq pc, lr
-    add r2, r2, #1
-    b length_loop
+    strb r3, [r2]
+    add r1, #1
+    b strlen_loop
 
 
-// void exit(int code)
+/* void exit(int code) */
 exit:
     mov r7, #1
     swi #0
+
+
+.section .data
+
+error_message:
+    .string "one argument is required. exit."
+
+newline:
+    .string "\n"
